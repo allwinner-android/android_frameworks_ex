@@ -39,6 +39,7 @@ import com.android.ex.camera2.portability.debug.Log;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.StringTokenizer;
 
@@ -126,29 +127,31 @@ class AndroidCameraAgentImpl extends CameraAgent {
     }
 
     private static class AndroidCameraDeviceInfo implements CameraDeviceInfo {
-        private final Camera.CameraInfo[] mCameraInfos;
+        private final HashMap<Integer, Camera.CameraInfo> mCameraInfos;
         private final int mNumberOfCameras;
         private final int mFirstBackCameraId;
         private final int mFirstFrontCameraId;
+        private final int mFirstExternalCameraId;
 
-        private AndroidCameraDeviceInfo(Camera.CameraInfo[] info, int numberOfCameras,
-                int firstBackCameraId, int firstFrontCameraId) {
-
+        private AndroidCameraDeviceInfo(HashMap<Integer, Camera.CameraInfo> info, int numberOfCameras,
+                int firstBackCameraId, int firstFrontCameraId, int firstExternalCameraId) {
             mCameraInfos = info;
             mNumberOfCameras = numberOfCameras;
             mFirstBackCameraId = firstBackCameraId;
             mFirstFrontCameraId = firstFrontCameraId;
+            mFirstExternalCameraId = firstExternalCameraId;
         }
 
         public static AndroidCameraDeviceInfo create() {
             int numberOfCameras;
-            Camera.CameraInfo[] cameraInfos;
+            HashMap<Integer, Camera.CameraInfo> cameraInfos;
             try {
                 numberOfCameras = Camera.getNumberOfCameras();
-                cameraInfos = new Camera.CameraInfo[numberOfCameras];
+                Log.d(TAG, "create with number " + numberOfCameras);
+                cameraInfos = new HashMap<Integer, Camera.CameraInfo>();
                 for (int i = 0; i < numberOfCameras; i++) {
-                    cameraInfos[i] = new Camera.CameraInfo();
-                    Camera.getCameraInfo(i, cameraInfos[i]);
+                    cameraInfos.put(i, new Camera.CameraInfo());
+                    Camera.getCameraInfo(i, cameraInfos.get(i));
                 }
             } catch (RuntimeException ex) {
                 Log.e(TAG, "Exception while creating CameraDeviceInfo", ex);
@@ -157,25 +160,29 @@ class AndroidCameraAgentImpl extends CameraAgent {
 
             int firstFront = NO_DEVICE;
             int firstBack = NO_DEVICE;
+            int firstExternal = NO_DEVICE;
             // Get the first (smallest) back and first front camera id.
             for (int i = numberOfCameras - 1; i >= 0; i--) {
-                if (cameraInfos[i].facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                if (cameraInfos.get(i).facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
                     firstBack = i;
-                } else {
-                    if (cameraInfos[i].facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                        firstFront = i;
-                    }
+                } else if (cameraInfos.get(i).facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                    firstFront = i;
+                }
+                else if (cameraInfos.get(i).facing == Camera.CameraInfo.CAMERA_FACING_EXTERNAL) {
+                    firstExternal = i;
                 }
             }
 
-            return new AndroidCameraDeviceInfo(cameraInfos, numberOfCameras, firstBack, firstFront);
+            return new AndroidCameraDeviceInfo(cameraInfos, numberOfCameras, firstBack, firstFront, firstExternal);
         }
 
         @Override
         public Characteristics getCharacteristics(int cameraId) {
-            Camera.CameraInfo info = mCameraInfos[cameraId];
+            Camera.CameraInfo info = mCameraInfos.get(cameraId);
             if (info != null) {
                 return new AndroidCharacteristics(info);
+            } else if (!mCameraInfos.isEmpty()){
+                return new AndroidCharacteristics(mCameraInfos.get(0));
             } else {
                 return null;
             }
@@ -196,6 +203,11 @@ class AndroidCameraAgentImpl extends CameraAgent {
             return mFirstFrontCameraId;
         }
 
+        @Override
+        public int getFirstExternalCameraId() {
+            return mFirstExternalCameraId;
+        }
+
         private static class AndroidCharacteristics extends Characteristics {
             private Camera.CameraInfo mCameraInfo;
 
@@ -211,6 +223,11 @@ class AndroidCameraAgentImpl extends CameraAgent {
             @Override
             public boolean isFacingFront() {
                 return mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT;
+            }
+
+            @Override
+            public boolean isFacingExternal() {
+                return mCameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_EXTERNAL;
             }
 
             @Override

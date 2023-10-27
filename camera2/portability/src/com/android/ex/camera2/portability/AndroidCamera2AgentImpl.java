@@ -1292,6 +1292,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
         private final int mNumberOfCameras;
         private final int mFirstBackCameraId;
         private final int mFirstFrontCameraId;
+        private final int mFirstExternalCameraId;
 
         public AndroidCamera2DeviceInfo(CameraManager cameraManager,
                                         String[] cameraIds, int numberOfCameras) {
@@ -1301,6 +1302,7 @@ class AndroidCamera2AgentImpl extends CameraAgent {
 
             int firstBackId = NO_DEVICE;
             int firstFrontId = NO_DEVICE;
+            int firstExternalId = NO_DEVICE;
             for (int id = 0; id < cameraIds.length; ++id) {
                 try {
                     int lensDirection = cameraManager.getCameraCharacteristics(cameraIds[id])
@@ -1313,12 +1315,17 @@ class AndroidCamera2AgentImpl extends CameraAgent {
                             lensDirection == CameraCharacteristics.LENS_FACING_FRONT) {
                         firstFrontId = id;
                     }
+                    if (firstFrontId == NO_DEVICE &&
+                            lensDirection == CameraCharacteristics.LENS_FACING_EXTERNAL) {
+                        firstExternalId = id;
+                    }
                 } catch (CameraAccessException ex) {
                     Log.w(TAG, "Couldn't get characteristics of camera '" + id + "'", ex);
                 }
             }
             mFirstBackCameraId = firstBackId;
             mFirstFrontCameraId = firstFrontId;
+            mFirstExternalCameraId = firstExternalId;
         }
 
         @Override
@@ -1347,6 +1354,11 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             return mFirstFrontCameraId;
         }
 
+        @Override
+        public int getFirstExternalCameraId() {
+            return mFirstExternalCameraId;
+        }
+
         private static class AndroidCharacteristics2 extends Characteristics {
             private CameraCharacteristics mCameraInfo;
 
@@ -1364,6 +1376,12 @@ class AndroidCamera2AgentImpl extends CameraAgent {
             public boolean isFacingFront() {
                 return mCameraInfo.get(CameraCharacteristics.LENS_FACING)
                         .equals(CameraCharacteristics.LENS_FACING_FRONT);
+            }
+
+            @Override
+            public boolean isFacingExternal() {
+                return mCameraInfo.get(CameraCharacteristics.LENS_FACING)
+                        .equals(CameraCharacteristics.LENS_FACING_EXTERNAL);
             }
 
             @Override

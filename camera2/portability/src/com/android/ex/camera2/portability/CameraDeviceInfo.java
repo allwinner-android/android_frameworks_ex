@@ -52,6 +52,12 @@ public interface CameraDeviceInfo {
     int getFirstFrontCameraId();
 
     /**
+     * @return The first (lowest) ID of the external cameras or {@code NO_DEVICE}
+     *         if not available.
+     */
+    int getFirstExternalCameraId();
+
+    /**
      * Device characteristics for a single camera.
      */
     public abstract class Characteristics {
@@ -66,6 +72,12 @@ public interface CameraDeviceInfo {
          * @return Whether the camera faces the device's screen.
          */
         public abstract boolean isFacingFront();
+
+        /**
+         * @return Whether the camera faces any other direction.
+         */
+        public abstract boolean isFacingExternal();
+
 
         /**
          * @return The camera sensor orientation, or the counterclockwise angle
